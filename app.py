@@ -10,7 +10,7 @@ st.set_page_config(page_title="AI Smart Scanner", layout="centered")
 st.title("🤖 AI Identity & Mood Scanner")
 
 # 1. Reference Image Check (Identity ke liye)
-REFERENCE_PATH = "me.jpg"
+REFERENCE_PATH = "me.png"
 
 if not os.path.exists(REFERENCE_PATH):
     st.error(f"Error: '{REFERENCE_PATH}' file nahi mili! GitHub par apni photo upload karo.")
@@ -64,3 +64,4 @@ webrtc_streamer(
 )
 
 st.info("Tip: Acchi accuracy ke liye light mein rahein aur front face dikhayein.")
+
