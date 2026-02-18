@@ -1,5 +1,6 @@
-streamlit
-streamlit-webrtc
-opencv-python-headless
-deepface
-tf-keras
+streamlit==1.28.0
+streamlit-webrtc==0.47.1
+opencv-python-headless==4.8.0.76
+deepface==0.0.79
+tf-keras==2.14.0
+av==10.0.0
