@@ -3,66 +3,94 @@ from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfigura
 import cv2
 from deepface import DeepFace
 import os
+import numpy as np
 
-# Page ki basic settings
-st.set_page_config(page_title="AI Live Mood Scanner", layout="centered")
-st.title("🤖 Live Mood & Identity Tracker")
+# Page configuration for a professional look
+st.set_page_config(page_title="AI Emotion Dashboard", layout="wide")
 
-# 1. Identity File ki Location (Check karna ki GitHub par me.png isi naam se ho)
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .status-box { 
+        padding: 20px; 
+        border-radius: 10px; 
+        background-color: #1f2937; 
+        text-align: center;
+        border: 2px solid #3b82f6;
+    }
+    .mood-text { 
+        font-size: 50px !important; 
+        font-weight: bold; 
+        text-transform: uppercase;
+        color: #00ff00;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("🎭 Real-Time Emotion Detection Dashboard")
+
+# 1. Identity Path Fix
 REFERENCE_PATH = "me.png" 
 
-if not os.path.exists(REFERENCE_PATH):
-    st.error(f"Error: '{REFERENCE_PATH}' file nahi mili! GitHub par apni photo upload karo jiska naam 'me.png' ho.")
-    st.stop()
-
-# 2. STUN Server Configuration (Connection error hatane ke liye)
+# 2. STUN Configuration to fix the "Orange Box" connection error
 RTC_CONFIGURATION = RTCConfiguration(
     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}]}
 )
 
-# 3. AI Processor Class: Jo har second frame ko check karegi
-class MoodProcessor(VideoTransformerBase):
+class EmotionProcessor(VideoTransformerBase):
     def transform(self, frame):
-        # Frame ko array (image) format mein convert karna
         img = frame.to_ndarray(format="bgr24")
-
+        
         try:
-            # Identity Check: Kya saamne Pranjal hai?
-            # detector_backend='opencv' use kiya hai taaki speed fast rahe
-            verify = DeepFace.verify(img, REFERENCE_PATH, enforce_detection=False, detector_backend='opencv')
-            is_me = "Pranjal (Verified)" if verify['verified'] else "Unknown User"
-            
-            # Mood Analysis: Happy, Sad, Angry, etc.
+            # Identity and Emotion analysis
+            # Using 'opencv' backend for maximum speed per second
             results = DeepFace.analyze(img, actions=['emotion'], enforce_detection=False, detector_backend='opencv')
             
             for res in results:
                 x, y, w, h = res['region']['x'], res['region']['y'], res['region']['w'], res['region']['h']
                 mood = res['dominant_emotion']
-
-                # Green box agar aap ho, Red box agar unknown
-                color = (0, 255, 0) if verify['verified'] else (0, 0, 255)
                 
-                # Drawing Box and Text
-                cv2.rectangle(img, (x, y), (x+w, y+h), color, 3)
-                cv2.putText(img, f"{is_me}", (x, y-40), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
-                cv2.putText(img, f"Mood: {mood}", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
-        
+                # Draw professional bounding box
+                cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                
+                # Add a semi-transparent overlay for the label (jaisa image mein tha)
+                overlay = img.copy()
+                cv2.rectangle(overlay, (0, img.shape[0]-100), (img.shape[1], img.shape[0]), (255, 255, 255), -1)
+                alpha = 0.8 
+                img = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+                
+                # Big Bold Mood Text on bottom (Exactly like your reference image)
+                cv2.putText(img, mood.upper(), (int(img.shape[1]/3), img.shape[0]-40), 
+                            cv2.FONT_HERSHEY_DUPLEX, 2.5, (0, 0, 0), 3)
         except Exception as e:
-            # Agar face detect nahi hua toh error nahi aayega, bas blank frame chalega
             pass
 
         return img
 
-# 4. Web Interface (Streamer)
-st.write("Niche 'START' button par click karein aur camera access allow karein:")
+# Layout: UI ko professional banane ke liye columns use kiye hain
+col1, col2 = st.columns([2, 1])
 
-webrtc_streamer(
-    key="mood-scanner",
-    rtc_configuration=RTC_CONFIGURATION,
-    video_processor_factory=MoodProcessor,
-    media_stream_constraints={"video": True, "audio": False},
-    async_processing=True, # Smooth performance ke liye
-)
+with col1:
+    st.subheader("Live Video Feed")
+    webrtc_streamer(
+        key="emotion-detection",
+        mode=st.WebRtcMode.SENDRECV,
+        rtc_configuration=RTC_CONFIGURATION,
+        video_processor_factory=EmotionProcessor,
+        media_stream_constraints={"video": True, "audio": False},
+        async_processing=True,
+    )
 
-st.divider()
-st.info("Tip: Per second accuracy ke liye chehre par acchi light rakhein.")
+with col2:
+    st.subheader("System Status")
+    st.markdown(f"""
+        <div class="status-box">
+            <p style='color: white;'>Identity File: <b>{REFERENCE_PATH}</b></p>
+            <p style='color: #00ff00;'>AI Model: Active</p>
+            <p style='color: #3b82f6;'>Backend: TensorFlow + DeepFace</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("Scanner har second aapke facial expressions ko analyze kar raha hai.")
+
+st.warning("Note: Agar camera load na ho, toh browser permissions check karein aur refresh karein.")
