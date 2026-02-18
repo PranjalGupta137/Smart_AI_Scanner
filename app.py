@@ -4,10 +4,10 @@ import cv2
 from deepface import DeepFace
 import os
 
-# Page Configuration
-st.set_page_config(page_title="AI Live Mood Scanner", layout="wide")
+# Page configuration
+st.set_page_config(page_title="AI Emotion Dashboard", layout="wide")
 
-# Custom CSS for Professional Look
+# Custom CSS for that big bold look you wanted
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -22,72 +22,77 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎭 AI Identity & Mood Dashboard")
+st.title("🎭 Real-Time Emotion Detection")
 
 # 1. Identity File Check
 REFERENCE_PATH = "me.png" 
 
 if not os.path.exists(REFERENCE_PATH):
-    st.error(f"Error: '{REFERENCE_PATH}' nahi mili! GitHub par file upload karein.")
+    st.error(f"Error: '{REFERENCE_PATH}' file nahi mili! GitHub par 'me.png' upload karein.")
     st.stop()
 
-# 2. Updated STUN Config (Connection Fix)
+# 2. STUN Configuration (Orange Box fix)
 RTC_CONFIGURATION = RTCConfiguration(
     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}]}
 )
 
-# 3. Fast Processor
+# 3. AI Processing Logic
 class EmotionProcessor(VideoTransformerBase):
     def transform(self, frame):
         img = frame.to_ndarray(format="bgr24")
         
         try:
-            # Fast Analysis using OpenCV backend
+            # Identity and Emotion analysis
+            # detector_backend='opencv' is the fastest for web servers
             results = DeepFace.analyze(img, actions=['emotion'], enforce_detection=False, detector_backend='opencv')
+            verify = DeepFace.verify(img, REFERENCE_PATH, enforce_detection=False, detector_backend='opencv')
+            
+            is_me = "Pranjal (Verified)" if verify['verified'] else "Unknown User"
             
             for res in results:
                 x, y, w, h = res['region']['x'], res['region']['y'], res['region']['w'], res['region']['h']
                 mood = res['dominant_emotion']
                 
-                # Bounding Box
-                cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                # Professional Bounding Box
+                color = (0, 255, 0) if verify['verified'] else (0, 0, 255)
+                cv2.rectangle(img, (x, y), (x+w, y+h), color, 2)
                 
-                # White Bar at bottom for Mood Text (Exactly like your reference)
+                # Bottom White Bar (Like your reference image)
                 overlay = img.copy()
-                cv2.rectangle(overlay, (0, img.shape[0]-80), (img.shape[1], img.shape[0]), (255, 255, 255), -1)
-                img = cv2.addWeighted(overlay, 0.7, img, 0.3, 0)
+                cv2.rectangle(overlay, (0, img.shape[0]-90), (img.shape[1], img.shape[0]), (255, 255, 255), -1)
+                img = cv2.addWeighted(overlay, 0.8, img, 0.2, 0)
                 
-                # Large Mood Text
-                cv2.putText(img, mood.upper(), (int(img.shape[1]/3.5), img.shape[0]-25), 
+                # Large Bold Text at the bottom
+                cv2.putText(img, mood.upper(), (int(img.shape[1]/3.5), img.shape[0]-35), 
                             cv2.FONT_HERSHEY_DUPLEX, 2.0, (0, 0, 0), 3)
         except:
             pass
 
         return img
 
-# 4. Professional Layout
+# 4. Streamlit UI Layout
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("Live Scanner Feed")
-    # Fixed WebRtcMode Error here:
+    # Fixed the AttributeError by using the imported WebRtcMode directly
     webrtc_streamer(
-        key="emotion-detection",
-        mode=WebRtcMode.SENDRECV,
+        key="ai-mood-scanner-final",
+        mode=WebRtcMode.SENDRECV, # Yeh line ab error nahi degi
         rtc_configuration=RTC_CONFIGURATION,
         video_processor_factory=EmotionProcessor,
         media_stream_constraints={"video": True, "audio": False},
     )
 
 with col2:
-    st.subheader("System Data")
+    st.subheader("Biometric Info")
     st.markdown(f"""
         <div class="status-box">
-            <p>Identity: <b>Verified ({REFERENCE_PATH})</b></p>
-            <p style='color: #00ff00;'>AI Model: Running</p>
-            <p style='color: #3b82f6;'>Updates: Real-time</p>
+            <p>User: <b>Pranjal</b></p>
+            <p>Status: <span style='color:#00ff00;'>ONLINE</span></p>
+            <p>Device: Web Camera</p>
         </div>
     """, unsafe_allow_html=True)
-    st.info("Scanner har second aapke facial expressions ko monitor kar raha hai.")
+    st.info("System har frame ko scan karke aapki emotions detect kar raha hai.")
 
-st.warning("Tip: Agar camera load na ho, toh refresh karein aur camera access allow karein.")
+st.warning("Tip: Agar screen black dikhe, toh 'START' button dabakar browser permission check karein.")
